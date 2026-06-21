@@ -1,0 +1,23 @@
+# Environment variable reference for the Python delivery service.
+# Defaults are shown inline where applicable.
+
+# HTTP server
+HTTP_PORT: 8082
+
+# PostgreSQL connection
+DB_HOST: localhost
+DB_PORT: 5432
+DB_NAME: delivery
+DB_USER: username
+DB_PASSWORD: secret
+DB_SSLMODE: disable
+
+# Kafka
+KAFKA_HOST: localhost:9092
+KAFKA_CONSUMER_GROUP: delivery-group
+KAFKA_BASKET_EVENTS_TOPIC: basket.events
+KAFKA_ORDER_EVENTS_TOPIC: order.events
+
+# gRPC Geo service client
+GEO_SERVICE_GRPC_HOST: 0.0.0.0
+GEO_SERVICE_GRPC_PORT: 5004
