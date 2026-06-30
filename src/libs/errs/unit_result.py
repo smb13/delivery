@@ -22,7 +22,7 @@ class UnitResult(Generic[E]):
     @staticmethod
     def failure(error: E) -> UnitResult[E]:
         if error is None:
-            raise ValueError("Error must not be null on failure")
+            raise ValueError("Error must not be none on failure")
         return UnitResult(False, error)
 
     @property

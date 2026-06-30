@@ -22,13 +22,13 @@ class Guard:
         return None
 
     @staticmethod
-    def against_null_or_empty(value: str | None, param_name: str) -> Error | None:
+    def against_none_or_empty(value: str | None, param_name: str) -> Error | None:
         if value is None or not value.strip():
             return GeneralErrors.value_is_required(param_name)
         return None
 
     @staticmethod
-    def against_null_or_empty_collection(
+    def against_none_or_empty_collection(
         collection: Collection[object] | None,
         param_name: str,
     ) -> Error | None:
@@ -37,7 +37,7 @@ class Guard:
         return None
 
     @staticmethod
-    def against_null_or_empty_uuid(uuid: UUID | None, param_name: str) -> Error | None:
+    def against_none_or_empty_uuid(uuid: UUID | None, param_name: str) -> Error | None:
         if uuid is None or uuid == _EMPTY_UUID:
             return GeneralErrors.value_is_required(param_name)
         return None

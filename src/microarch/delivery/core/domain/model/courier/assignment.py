@@ -61,7 +61,7 @@ class Assignment(BaseEntity[UUID]):
         location: Location,
     ) -> Result[Assignment, Error]:
         err = Guard.combine(
-            Guard.against_null_or_empty_uuid(order_id, "order_id"),
+            Guard.against_none_or_empty_uuid(order_id, "order_id"),
             Guard.against_none(volume, "volume"),
             Guard.against_none(location, "location"),
         )

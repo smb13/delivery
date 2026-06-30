@@ -95,4 +95,4 @@ class GeneralErrors:
     @staticmethod
     def _validate_name(name: str) -> None:
         if name is None or not name.strip():
-            raise ValueError("Name must not be null or empty")
+            raise ValueError("Name must not be none or empty")
