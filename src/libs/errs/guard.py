@@ -43,6 +43,12 @@ class Guard:
         return None
 
     @staticmethod
+    def against_none(value: object | None, param_name: str) -> Error | None:
+        if value is None:
+            return GeneralErrors.value_is_required(param_name)
+        return None
+
+    @staticmethod
     def against_greater_than(value: T | None, max_value: T, param_name: str) -> Error | None:
         if value is None or value > max_value:
             return GeneralErrors.value_must_be_less_than(param_name, value, max_value)
