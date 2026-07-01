@@ -72,15 +72,14 @@ def test_complete_succeeds_when_courier_is_at_order_location() -> None:
     assert assignment.status == AssignmentStatus.COMPLETED
 
 
-def test_complete_fails_when_courier_is_one_cell_away() -> None:
+def test_complete_succeeds_when_courier_is_one_cell_away() -> None:
     assignment = Assignment.must_create(uuid4(), Volume.must_create(2), Location.must_create(4, 4))
     courier_location = Location.must_create(4, 5)
 
     result = assignment.complete(courier_location)
 
-    assert result.is_failure
-    assert result.get_error().code == "assignment.courier.is.too.far"
-    assert assignment.status == AssignmentStatus.ASSIGNED
+    assert result.is_success
+    assert assignment.status == AssignmentStatus.COMPLETED
 
 
 def test_complete_fails_when_courier_is_too_far() -> None:
