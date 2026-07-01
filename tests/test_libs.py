@@ -60,9 +60,9 @@ def test_unit_result_merge() -> None:
     assert first.merge(second).is_failure
 
 
-def test_guard_against_null_or_empty() -> None:
-    assert Guard.against_null_or_empty(None, "name") is not None
-    assert Guard.against_null_or_empty("value", "name") is None
+def test_guard_against_none_or_empty() -> None:
+    assert Guard.against_none_or_empty(None, "name") is not None
+    assert Guard.against_none_or_empty("value", "name") is None
 
 
 def test_error_serialization_roundtrip() -> None:
