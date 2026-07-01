@@ -89,7 +89,7 @@ class Assignment(BaseEntity[UUID]):
         if self._status == AssignmentStatus.COMPLETED:
             return UnitResult.failure(AssignmentErrors.already_completed())
 
-        if courier_location.distance_to(self._location) != 0:
+        if courier_location.distance_to(self._location) > 1:
             return UnitResult.failure(AssignmentErrors.courier_is_too_far())
 
         self._status = AssignmentStatus.COMPLETED
@@ -108,5 +108,6 @@ class AssignmentErrors:
     def courier_is_too_far() -> Error:
         return Error.of(
             "assignment.courier.is.too.far",
-            "Courier must be at the order location to complete the assignment",
+            "Courier must be at most one cell away from the order location "
+            "to complete the assignment",
         )
