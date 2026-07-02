@@ -10,6 +10,7 @@ from libs.errs.result import Result
 from libs.errs.unit_result import UnitResult
 from microarch.delivery.core.domain.model.courier.assignment import (
     Assignment,
+    AssignmentInfo,
     AssignmentStatus,
 )
 from microarch.delivery.core.domain.model.location import Location
@@ -48,8 +49,8 @@ class Courier(Aggregate[UUID]):
         return self._max_volume
 
     @property
-    def assignments(self) -> list[Assignment]:
-        return list(self._assignments)
+    def assignments(self) -> list[AssignmentInfo]:
+        return [assignment.to_info() for assignment in self._assignments]
 
     @staticmethod
     def create(
@@ -111,12 +112,8 @@ class Courier(Aggregate[UUID]):
     def complete_assignment(
         self,
         order_id: UUID,
-        courier_location: Location,
     ) -> UnitResult[Error]:
-        err = Guard.combine(
-            Guard.against_none_or_empty_uuid(order_id, "order_id"),
-            Guard.against_none(courier_location, "courier_location"),
-        )
+        err = Guard.against_none_or_empty_uuid(order_id, "order_id")
         if err is not None:
             return UnitResult.failure(err)
 
@@ -129,10 +126,10 @@ class Courier(Aggregate[UUID]):
                 GeneralErrors.not_found("Assignment", order_id),
             )
 
-        if courier_location.distance_to(assignment.location) > 1:
+        if self._location.distance_to(assignment.location) > 1:
             return UnitResult.failure(CourierErrors.courier_is_too_far())
 
-        return assignment.complete(courier_location)
+        return assignment.complete(self._location)
 
     def move(self, location: Location) -> UnitResult[Error]:
         err = Guard.against_none(location, "location")

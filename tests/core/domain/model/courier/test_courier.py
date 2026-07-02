@@ -70,7 +70,8 @@ def test_can_take_counts_only_active_assignments() -> None:
     courier = Courier.must_create("Ivan", Location.must_create(1, 1))
     order_id = uuid4()
     courier.take_order(order_id, Volume.must_create(15), Location.must_create(2, 2))
-    courier.complete_assignment(order_id, Location.must_create(2, 2))
+    courier.move(Location.must_create(2, 2))
+    courier.complete_assignment(order_id)
 
     assert courier.can_take(Volume.must_create(15)) is True
 
@@ -115,8 +116,9 @@ def test_complete_assignment_succeeds_at_order_location() -> None:
     courier = Courier.must_create("Ivan", Location.must_create(1, 1))
     order_id = uuid4()
     courier.take_order(order_id, Volume.must_create(5), Location.must_create(2, 2))
+    courier.move(Location.must_create(2, 2))
 
-    result = courier.complete_assignment(order_id, Location.must_create(2, 2))
+    result = courier.complete_assignment(order_id)
 
     assert result.is_success
     assert courier.assignments[0].status == AssignmentStatus.COMPLETED
@@ -126,8 +128,9 @@ def test_complete_assignment_succeeds_one_cell_away() -> None:
     courier = Courier.must_create("Ivan", Location.must_create(1, 1))
     order_id = uuid4()
     courier.take_order(order_id, Volume.must_create(5), Location.must_create(2, 2))
+    courier.move(Location.must_create(2, 3))
 
-    result = courier.complete_assignment(order_id, Location.must_create(2, 3))
+    result = courier.complete_assignment(order_id)
 
     assert result.is_success
     assert courier.assignments[0].status == AssignmentStatus.COMPLETED
@@ -138,7 +141,7 @@ def test_complete_assignment_fails_when_too_far() -> None:
     order_id = uuid4()
     courier.take_order(order_id, Volume.must_create(5), Location.must_create(2, 2))
 
-    result = courier.complete_assignment(order_id, Location.must_create(5, 5))
+    result = courier.complete_assignment(order_id)
 
     assert result.is_failure
     assert result.get_error().code == "courier.is.too.far"
@@ -148,7 +151,7 @@ def test_complete_assignment_fails_when_too_far() -> None:
 def test_complete_assignment_fails_when_order_not_found() -> None:
     courier = Courier.must_create("Ivan", Location.must_create(1, 1))
 
-    result = courier.complete_assignment(uuid4(), Location.must_create(1, 1))
+    result = courier.complete_assignment(uuid4())
 
     assert result.is_failure
     assert result.get_error().code == "record.not.found"
@@ -158,9 +161,10 @@ def test_complete_assignment_fails_when_already_completed() -> None:
     courier = Courier.must_create("Ivan", Location.must_create(1, 1))
     order_id = uuid4()
     courier.take_order(order_id, Volume.must_create(5), Location.must_create(2, 2))
-    courier.complete_assignment(order_id, Location.must_create(2, 2))
+    courier.move(Location.must_create(2, 2))
+    courier.complete_assignment(order_id)
 
-    result = courier.complete_assignment(order_id, Location.must_create(2, 2))
+    result = courier.complete_assignment(order_id)
 
     assert result.is_failure
     assert result.get_error().code == "assignment.already.completed"
