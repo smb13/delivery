@@ -17,6 +17,40 @@ class AssignmentStatus(Enum):
     COMPLETED = auto()
 
 
+class AssignmentInfo:
+    """Read-only объект Assignment для внешних потребителей
+    
+    """
+
+    def __init__(
+        self,
+        order_id: UUID,
+        volume: Volume,
+        location: Location,
+        status: AssignmentStatus,
+    ) -> None:
+        self._order_id = order_id
+        self._volume = volume
+        self._location = location
+        self._status = status
+
+    @property
+    def order_id(self) -> UUID:
+        return self._order_id
+
+    @property
+    def volume(self) -> Volume:
+        return self._volume
+
+    @property
+    def location(self) -> Location:
+        return self._location
+
+    @property
+    def status(self) -> AssignmentStatus:
+        return self._status
+
+
 class Assignment(BaseEntity[UUID]):
     """Назначение заказа на курьера.
 
@@ -85,11 +119,19 @@ class Assignment(BaseEntity[UUID]):
     ) -> Assignment:
         return Assignment.create(order_id, volume, location).get_value_or_throw()
 
+    def to_info(self) -> AssignmentInfo:
+        return AssignmentInfo(
+            self._order_id,
+            self._volume,
+            self._location,
+            self._status,
+        )
+
     def complete(self, courier_location: Location) -> UnitResult[Error]:
         if self._status == AssignmentStatus.COMPLETED:
             return UnitResult.failure(AssignmentErrors.already_completed())
 
-        if courier_location.distance_to(self._location) != 0:
+        if courier_location.distance_to(self._location) > 1:
             return UnitResult.failure(AssignmentErrors.courier_is_too_far())
 
         self._status = AssignmentStatus.COMPLETED
@@ -108,5 +150,6 @@ class AssignmentErrors:
     def courier_is_too_far() -> Error:
         return Error.of(
             "assignment.courier.is.too.far",
-            "Courier must be at the order location to complete the assignment",
+            "Courier must be at most one cell away from the order location "
+            "to complete the assignment",
         )
