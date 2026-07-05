@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from libs.ddd.value_object import ValueObject
 from libs.errs.error import Error
 from libs.errs.guard import Guard
