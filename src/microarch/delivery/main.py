@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import (
@@ -10,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from taskiq.cli.scheduler.run import SchedulerLoop
 
 from microarch.delivery.application_properties import ApplicationProperties
 from microarch.delivery.config.application_event_publisher import ApplicationEventPublisher
@@ -19,6 +22,7 @@ from microarch.delivery.global_exception_handler import (
     KafkaConsumerSettings,
     register_global_exception_handler,
 )
+from microarch.delivery.tasks import configure_taskiq, scheduler
 
 
 def create_database_engine(settings: DatabaseSettings | None = None) -> AsyncEngine:
@@ -42,7 +46,26 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        configure_taskiq(db_engine)
+        await scheduler.startup()
+        for source in scheduler.sources:
+            await source.startup()
+
+        scheduler_loop = SchedulerLoop(scheduler)
+        scheduler_task = asyncio.create_task(
+            scheduler_loop.run(loop_interval=timedelta(seconds=1)),
+        )
+
         yield
+
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
+        await scheduler.shutdown()
+        for source in scheduler.sources:
+            await source.shutdown()
         await db_engine.dispose()
 
     app = FastAPI(

@@ -19,6 +19,7 @@ dependencies = [
     "grpcio>=1.68.0",
     "protobuf>=5.29.0",
     "alembic>=1.18.5",
+    "taskiq>=0.12.4",
 ]
 
 [project.optional-dependencies]
