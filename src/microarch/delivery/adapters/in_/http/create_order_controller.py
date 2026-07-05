@@ -16,6 +16,7 @@ from microarch.delivery.core.application.commands.create_order import (
     CreateOrderCommand,
     CreateOrderCommandHandler,
 )
+from microarch.delivery.core.domain.model.address import Address as DomainAddress
 
 
 class CreateOrderController(BaseCreateOrderApi):
@@ -26,13 +27,19 @@ class CreateOrderController(BaseCreateOrderApi):
         new_order: NewOrder,
         session: AsyncSession,
     ) -> CreateOrderResponse:
-        command_result = CreateOrderCommand.create(
-            order_id=new_order.id,
+        address_result = DomainAddress.create(
             country=new_order.address.country,
             city=new_order.address.city,
             street=new_order.address.street,
             house=new_order.address.house,
             apartment=new_order.address.apartment,
+        )
+        if address_result.is_failure:
+            return bad_request(address_result.get_error())
+
+        command_result = CreateOrderCommand.create(
+            order_id=new_order.id,
+            address=address_result.get_value(),
             volume=new_order.volume,
         )
         if command_result.is_failure:
