@@ -17,13 +17,14 @@ class DatabaseSettings(BaseSettings):
     name: str = "delivery"
     user: str = "username"
     password: str = "secret"
-    sslmode: str = "disable"
+    # sslmode: str = "disable"
 
     @property
     def url(self) -> str:
         return (
             f"postgresql+asyncpg://{self.user}:{self.password}"
-            f"@{self.host}:{self.port}/{self.name}?sslmode={self.sslmode}"
+            f"@{self.host}:{self.port}/{self.name}"
+            # f"@{self.host}:{self.port}/{self.name}?sslmode={self.sslmode}"
         )
 
 

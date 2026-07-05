@@ -61,6 +61,32 @@ def create_app(
 
     register_global_exception_handler(app)
 
+    from microarch.delivery.adapters.in_.http.api.complete_order_api import (
+        router as complete_order_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.create_courier_api import (
+        router as create_courier_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.create_order_api import (
+        router as create_order_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.get_couriers_api import (
+        router as get_couriers_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.get_orders_api import (
+        router as get_orders_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.move_courier_api import (
+        router as move_courier_router,
+    )
+
+    app.include_router(create_order_router)
+    app.include_router(create_courier_router)
+    app.include_router(get_couriers_router)
+    app.include_router(get_orders_router)
+    app.include_router(move_courier_router)
+    app.include_router(complete_order_router)
+
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
