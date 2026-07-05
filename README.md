@@ -33,6 +33,43 @@ python -m microarch.delivery.main
 
 Сервис поднимается на порту `8082` (переменная окружения `HTTP_PORT`).
 
+## Миграции БД (Alembic)
+
+Проект использует [Alembic](https://alembic.sqlalchemy.org/) для управления миграциями PostgreSQL.
+URL подключения формируется из переменных окружения: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
+
+### Применить миграции
+
+```bash
+alembic upgrade head
+```
+
+### Создать новую миграцию
+
+```bash
+alembic revision --autogenerate -m "описание изменений"
+```
+
+После генерации проверьте содержимое файла в `alembic/versions/` перед применением.
+
+### Откатить последнюю миграцию
+
+```bash
+alembic downgrade -1
+```
+
+### Текущая версия БД
+
+```bash
+alembic current
+```
+
+### Режим offline
+
+```bash
+alembic upgrade head --sql > migration.sql
+```
+
 ## Запросы к БД
 
 ```sql
