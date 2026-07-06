@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -39,6 +39,7 @@ from microarch.delivery.core.domain.services.orders_distribution_service import 
     OrdersDistributionService,
 )
 from microarch.delivery.core.ports.courier_repository import ICourierRepository
+from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.core.ports.order_repository import IOrderRepository
 from microarch.delivery.core.ports.unit_of_work import IUnitOfWork
 
@@ -56,25 +57,25 @@ def _unit_of_work_mock() -> AsyncMock:
 
 async def test_create_order_handler_persists_order() -> None:
     order_repo = AsyncMock(spec=IOrderRepository)
+    geo_client = AsyncMock(spec=IGeoClient)
     session = AsyncMock(spec=AsyncSession)
-    handler = CreateOrderCommandHandler(order_repo, session)
+    handler = CreateOrderCommandHandler(order_repo, geo_client, session)
 
     order_id = uuid4()
+    address = Address.must_create("RU", "Moscow", "Tverskaya", "1", "2")
     command = CreateOrderCommand(
         order_id=order_id,
-        address=Address.must_create("RU", "Moscow", "Tverskaya", "1", "2"),
+        address=address,
         volume=3,
     )
+    geo_client.get_location.return_value = Result.success(Location.must_create(5, 5))
 
-    with patch(
-        "microarch.delivery.core.application.commands.create_order.random.randint",
-        return_value=5,
-    ):
-        result = await handler.handle(command)
+    result = await handler.handle(command)
 
     assert result.is_success
     assert result.get_value() == order_id
 
+    geo_client.get_location.assert_awaited_once_with(address)
     order_repo.add.assert_awaited_once()
     added_order = order_repo.add.await_args[0][0]
     assert added_order.id == order_id
@@ -87,14 +88,16 @@ async def test_create_order_handler_persists_order() -> None:
 
 async def test_create_order_handler_returns_failure_when_volume_is_invalid() -> None:
     order_repo = AsyncMock(spec=IOrderRepository)
+    geo_client = AsyncMock(spec=IGeoClient)
     session = AsyncMock(spec=AsyncSession)
-    handler = CreateOrderCommandHandler(order_repo, session)
+    handler = CreateOrderCommandHandler(order_repo, geo_client, session)
 
     command = CreateOrderCommand(
         order_id=uuid4(),
         address=Address.must_create("RU", "Moscow", "Tverskaya", "1", "2"),
         volume=0,
     )
+    geo_client.get_location.return_value = Result.success(Location.must_create(5, 5))
 
     result = await handler.handle(command)
 

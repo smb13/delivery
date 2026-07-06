@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from libs.errs.error import Error
+from microarch.delivery.core.ports.geo_client import IGeoClient
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -14,6 +15,11 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
     session_factory = request.app.state.session_factory
     async with session_factory() as session:
         yield session
+
+
+def get_geo_client(request: Request) -> IGeoClient:
+    """Возвращает gRPC-клиент к сервису Geo из контекста приложения."""
+    return request.app.state.geo_client
 
 
 def error_response(error: Error, status_code: int) -> dict[str, object]:

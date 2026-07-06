@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -10,13 +9,10 @@ from libs.errs.error import Error
 from libs.errs.guard import Guard
 from libs.errs.result import Result
 from microarch.delivery.core.domain.model.address import Address
-from microarch.delivery.core.domain.model.location import Location
 from microarch.delivery.core.domain.model.order.order import Order
 from microarch.delivery.core.domain.model.volume import Volume
+from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.core.ports.order_repository import IOrderRepository
-
-_LOCATION_MIN = 1
-_LOCATION_MAX = 10
 
 
 @dataclass(frozen=True)
@@ -56,16 +52,19 @@ class CreateOrderCommandHandler:
     def __init__(
         self,
         order_repository: IOrderRepository,
+        geo_client: IGeoClient,
         session: AsyncSession,
     ) -> None:
         self._order_repository = order_repository
+        self._geo_client = geo_client
         self._session = session
 
     async def handle(self, command: CreateOrderCommand) -> Result[UUID, Error]:
-        location = Location.must_create(
-            random.randint(_LOCATION_MIN, _LOCATION_MAX),
-            random.randint(_LOCATION_MIN, _LOCATION_MAX),
-        )
+        location_result = await self._geo_client.get_location(command.address)
+        if location_result.is_failure:
+            return Result.failure(location_result.get_error())
+
+        location = location_result.get_value()
 
         volume_result = Volume.create(command.volume)
         if volume_result.is_failure:

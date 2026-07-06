@@ -14,8 +14,10 @@ from sqlalchemy.ext.asyncio import (
 )
 from taskiq.cli.scheduler.run import SchedulerLoop
 
+from microarch.delivery.adapters.out.grpc.geo_client_impl import GeoClientImpl
 from microarch.delivery.application_properties import ApplicationProperties
 from microarch.delivery.config.application_event_publisher import ApplicationEventPublisher
+from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.default_domain_event_publisher import DefaultDomainEventPublisher
 from microarch.delivery.global_exception_handler import (
     DatabaseSettings,
@@ -34,6 +36,7 @@ def create_app(
     *,
     properties: ApplicationProperties | None = None,
     engine: AsyncEngine | None = None,
+    geo_client: IGeoClient | None = None,
 ) -> FastAPI:
     app_properties = properties or ApplicationProperties()
     db_settings = DatabaseSettings()
@@ -43,6 +46,10 @@ def create_app(
     session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     event_publisher = ApplicationEventPublisher()
     domain_event_publisher = DefaultDomainEventPublisher(event_publisher)
+    app_geo_client = geo_client or GeoClientImpl(
+        host=app_properties.grpc.geo_service.host,
+        port=app_properties.grpc.geo_service.port,
+    )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -79,6 +86,7 @@ def create_app(
     app.state.session_factory = session_factory
     app.state.event_publisher = event_publisher
     app.state.domain_event_publisher = domain_event_publisher
+    app.state.geo_client = app_geo_client
     app.state.kafka_bootstrap_servers = kafka_settings.host
     app.state.kafka_consumer_group = kafka_settings.consumer_group
 

@@ -17,6 +17,7 @@ from microarch.delivery.core.application.commands.create_order import (
     CreateOrderCommandHandler,
 )
 from microarch.delivery.core.domain.model.address import Address as DomainAddress
+from microarch.delivery.core.ports.geo_client import IGeoClient
 
 
 class CreateOrderController(BaseCreateOrderApi):
@@ -26,6 +27,7 @@ class CreateOrderController(BaseCreateOrderApi):
         self,
         new_order: NewOrder,
         session: AsyncSession,
+        geo_client: IGeoClient,
     ) -> CreateOrderResponse:
         address_result = DomainAddress.create(
             country=new_order.address.country,
@@ -47,6 +49,7 @@ class CreateOrderController(BaseCreateOrderApi):
 
         handler = CreateOrderCommandHandler(
             order_repository=OrderRepository(session),
+            geo_client=geo_client,
             session=session,
         )
         result = await handler.handle(command_result.get_value())
