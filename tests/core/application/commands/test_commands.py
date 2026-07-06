@@ -28,6 +28,7 @@ from microarch.delivery.core.application.commands.move_courier import (
     MoveCourierCommand,
     MoveCourierCommandHandler,
 )
+from microarch.delivery.core.domain.model.address import Address
 from microarch.delivery.core.domain.model.courier.assignment import AssignmentStatus
 from microarch.delivery.core.domain.model.courier.courier import Courier
 from microarch.delivery.core.domain.model.location import Location
@@ -61,11 +62,7 @@ async def test_create_order_handler_persists_order() -> None:
     order_id = uuid4()
     command = CreateOrderCommand(
         order_id=order_id,
-        country="RU",
-        city="Moscow",
-        street="Tverskaya",
-        house="1",
-        apartment="2",
+        address=Address.must_create("RU", "Moscow", "Tverskaya", "1", "2"),
         volume=3,
     )
 
@@ -95,11 +92,7 @@ async def test_create_order_handler_returns_failure_when_volume_is_invalid() -> 
 
     command = CreateOrderCommand(
         order_id=uuid4(),
-        country="RU",
-        city="Moscow",
-        street="Tverskaya",
-        house="1",
-        apartment="2",
+        address=Address.must_create("RU", "Moscow", "Tverskaya", "1", "2"),
         volume=0,
     )
 
