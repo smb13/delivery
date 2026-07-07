@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import (
@@ -10,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from taskiq.cli.scheduler.run import SchedulerLoop
 
 from microarch.delivery.application_properties import ApplicationProperties
 from microarch.delivery.config.application_event_publisher import ApplicationEventPublisher
@@ -19,6 +22,7 @@ from microarch.delivery.global_exception_handler import (
     KafkaConsumerSettings,
     register_global_exception_handler,
 )
+from microarch.delivery.tasks import configure_taskiq, scheduler
 
 
 def create_database_engine(settings: DatabaseSettings | None = None) -> AsyncEngine:
@@ -42,7 +46,26 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        configure_taskiq(db_engine)
+        await scheduler.startup()
+        for source in scheduler.sources:
+            await source.startup()
+
+        scheduler_loop = SchedulerLoop(scheduler)
+        scheduler_task = asyncio.create_task(
+            scheduler_loop.run(loop_interval=timedelta(seconds=1)),
+        )
+
         yield
+
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
+        await scheduler.shutdown()
+        for source in scheduler.sources:
+            await source.shutdown()
         await db_engine.dispose()
 
     app = FastAPI(
@@ -60,6 +83,32 @@ def create_app(
     app.state.kafka_consumer_group = kafka_settings.consumer_group
 
     register_global_exception_handler(app)
+
+    from microarch.delivery.adapters.in_.http.api.complete_order_api import (
+        router as complete_order_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.create_courier_api import (
+        router as create_courier_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.create_order_api import (
+        router as create_order_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.get_couriers_api import (
+        router as get_couriers_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.get_orders_api import (
+        router as get_orders_router,
+    )
+    from microarch.delivery.adapters.in_.http.api.move_courier_api import (
+        router as move_courier_router,
+    )
+
+    app.include_router(create_order_router)
+    app.include_router(create_courier_router)
+    app.include_router(get_couriers_router)
+    app.include_router(get_orders_router)
+    app.include_router(move_courier_router)
+    app.include_router(complete_order_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

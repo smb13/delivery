@@ -39,21 +39,21 @@ class AssignOrderCommandHandler:
         self._unit_of_work = unit_of_work
 
     async def handle(self, command: AssignOrderCommand) -> UnitResult[Error]:
-        order = await self._order_repository.get_one_created()
-        if order is None:
-            return UnitResult.failure(
-                GeneralErrors.not_found("Order", "created"),
-            )
-
-        couriers = await self._courier_repository.get_all()
-
-        dispatch_result = self._distribution_service.dispatch(order, couriers)
-        if dispatch_result.is_failure:
-            return UnitResult.failure(dispatch_result.get_error())
-
-        courier = dispatch_result.get_value()
-
         async with self._unit_of_work as uow:
+            order = await self._order_repository.get_one_created()
+            if order is None:
+                return UnitResult.failure(
+                    GeneralErrors.not_found("Order", "created"),
+                )
+
+            couriers = await self._courier_repository.get_all()
+
+            dispatch_result = self._distribution_service.dispatch(order, couriers)
+            if dispatch_result.is_failure:
+                return UnitResult.failure(dispatch_result.get_error())
+
+            courier = dispatch_result.get_value()
+
             await uow.orders.update(order)
             await uow.couriers.update(courier)
 

@@ -1,0 +1,351 @@
+openapi: "3.1.0"
+info:
+  version: 1.0.0
+  title: Swagger Delivery
+  description: Отвечает за учет курьеров, диспетчеризацию доставок, доставку
+paths:
+  /api/v1/orders:
+    post:
+      summary: Создать заказ
+      description: Позволяет создать заказ с целью тестирования
+      operationId: CreateOrder
+      tags:
+        - CreateOrder
+      requestBody:
+        description: Новый заказ
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewOrder'
+      responses:
+        '201':
+          description: Заказ успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Конфликт при создании заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/couriers/{courierId}/orders/{orderId}/complete:
+    post:
+      summary: Завершить заказ
+      description: Позволяет завершить заказ
+      operationId: CompleteOrder
+      tags:
+        - CompleteOrder
+      parameters:
+        - name: courierId
+          in: path
+          description: Идентификатор курьера
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: orderId
+          in: path
+          description: Идентификатор заказа
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Конфликт при завершении заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/couriers/{courierId}/move:
+    post:
+      summary: Переместить курьера
+      description: Позволяет переместить курьера
+      operationId: MoveCourier
+      tags:
+        - MoveCourier
+      parameters:
+        - name: courierId
+          in: path
+          description: Идентификатор курьера
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Местоположение
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Location'
+      responses:
+        '200':
+          description: Успешный ответ
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Конфликт при перемещении курьера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/orders/active:
+    get:
+      summary: Получить все незавершенные заказы
+      description: Позволяет получить все незавершенные заказы
+      operationId: GetOrders
+      tags:
+        - GetOrders
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/couriers:
+    post:
+      summary: Добавить курьера
+      description: Позволяет добавить курьера
+      operationId: CreateCourier
+      tags:
+        - CreateCourier
+      requestBody:
+        description: Курьер
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCourier'
+      responses:
+        '201':
+          description: Курьер успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateCourierResponse'
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Конфликт при создании курьера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Получить всех курьеров
+      description: Позволяет получить всех курьеров
+      operationId: GetCouriers
+      tags:
+        - GetCouriers
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Courier'
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Address:
+      type: object
+      required:
+        - country
+        - city
+        - street
+        - house
+        - apartment
+      properties:
+        country:
+          type: string
+          description: Страна
+        city:
+          type: string
+          description: Город
+        street:
+          type: string
+          description: Улица
+        house:
+          type: string
+          description: Дом
+        apartment:
+          type: string
+          description: Квартира
+    Location:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: integer
+          description: X
+          minimum: 0
+        y:
+          type: integer
+          description: Y
+          minimum: 0
+    NewOrder:
+      type: object
+      required:
+        - id
+        - address
+        - volume
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор
+        address:
+          $ref: '#/components/schemas/Address'
+          description: Адрес
+        volume:
+          type: integer
+          description: Объем
+          minimum: 0
+    Order:
+      type: object
+      required:
+        - id
+        - location
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор
+        location:
+          $ref: '#/components/schemas/Location'
+          description: Геолокация
+    NewCourier:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Имя
+          minLength: 1
+    Courier:
+      type: object
+      required:
+        - id
+        - name
+        - location
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор
+        name:
+          type: string
+          description: Имя
+        location:
+          $ref: '#/components/schemas/Location'
+          description: Геолокация
+    CreateOrderResponse:
+      type: object
+      required:
+        - orderId
+      properties:
+        orderId:
+          type: string
+          format: uuid
+    CreateCourierResponse:
+      type: object
+      required:
+        - courierId
+      properties:
+        courierId:
+          type: string
+          format: uuid
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Код ошибки
+        message:
+          type: string
+          description: Текст ошибки

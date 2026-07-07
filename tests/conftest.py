@@ -4,11 +4,13 @@ from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
 from microarch.delivery.config.container import Container, create_schema, drop_schema
 from microarch.delivery.core.ports.unit_of_work import IUnitOfWork
+from microarch.delivery.main import create_app
 
 
 @pytest.fixture(scope="session")
@@ -41,3 +43,15 @@ async def uow(engine: AsyncEngine) -> AsyncIterator[IUnitOfWork]:
     container = Container(engine)
     async with container.create_unit_of_work() as uow:
         yield uow
+
+
+@pytest_asyncio.fixture(loop_scope="function")
+async def client(engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
+    await drop_schema(engine)
+    await create_schema(engine)
+    app = create_app(engine=engine)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as test_client:
+        yield test_client

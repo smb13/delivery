@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from libs.errs.error import Error
 from libs.errs.guard import Guard
 from libs.errs.result import Result
+from microarch.delivery.core.domain.model.address import Address
 from microarch.delivery.core.domain.model.location import Location
 from microarch.delivery.core.domain.model.order.order import Order
 from microarch.delivery.core.domain.model.volume import Volume
@@ -23,30 +24,18 @@ class CreateOrderCommand:
     """Команда создания заказа."""
 
     order_id: UUID
-    country: str
-    city: str
-    street: str
-    house: str
-    apartment: str
+    address: Address
     volume: int
 
     @staticmethod
     def create(
         order_id: UUID,
-        country: str,
-        city: str,
-        street: str,
-        house: str,
-        apartment: str,
+        address: Address,
         volume: int,
     ) -> Result[CreateOrderCommand, Error]:
         err = Guard.combine(
             Guard.against_none_or_empty_uuid(order_id, "order_id"),
-            Guard.against_none_or_empty(country, "country"),
-            Guard.against_none_or_empty(city, "city"),
-            Guard.against_none_or_empty(street, "street"),
-            Guard.against_none_or_empty(house, "house"),
-            Guard.against_none_or_empty(apartment, "apartment"),
+            Guard.against_none(address, "address"),
             Guard.against_less_or_equal(volume, 0, "volume"),
         )
         if err is not None:
@@ -55,11 +44,7 @@ class CreateOrderCommand:
         return Result.success(
             CreateOrderCommand(
                 order_id=order_id,
-                country=country,
-                city=city,
-                street=street,
-                house=house,
-                apartment=apartment,
+                address=address,
                 volume=volume,
             ),
         )

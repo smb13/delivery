@@ -28,6 +28,7 @@ from microarch.delivery.core.application.commands.move_courier import (
     MoveCourierCommand,
     MoveCourierCommandHandler,
 )
+from microarch.delivery.core.domain.model.address import Address
 from microarch.delivery.core.domain.model.courier.assignment import AssignmentStatus
 from microarch.delivery.core.domain.model.courier.courier import Courier
 from microarch.delivery.core.domain.model.location import Location
@@ -61,11 +62,7 @@ async def test_create_order_handler_persists_order() -> None:
     order_id = uuid4()
     command = CreateOrderCommand(
         order_id=order_id,
-        country="RU",
-        city="Moscow",
-        street="Tverskaya",
-        house="1",
-        apartment="2",
+        address=Address.must_create("RU", "Moscow", "Tverskaya", "1", "2"),
         volume=3,
     )
 
@@ -95,11 +92,7 @@ async def test_create_order_handler_returns_failure_when_volume_is_invalid() -> 
 
     command = CreateOrderCommand(
         order_id=uuid4(),
-        country="RU",
-        city="Moscow",
-        street="Tverskaya",
-        house="1",
-        apartment="2",
+        address=Address.must_create("RU", "Moscow", "Tverskaya", "1", "2"),
         volume=0,
     )
 
@@ -149,13 +142,12 @@ async def test_move_courier_handler_moves_and_persists_courier() -> None:
     courier = Courier.must_create("Ivan", Location.must_create(1, 1))
     courier_repo.get.return_value = courier
 
-    new_location = Location.must_create(2, 2)
-    command = MoveCourierCommand.create(courier.id, new_location).get_value()
+    command = MoveCourierCommand.create(courier.id, 2, 2).get_value()
 
     result = await handler.handle(command)
 
     assert result.is_success
-    assert courier.location == new_location
+    assert courier.location == Location.must_create(2, 2)
     courier_repo.update.assert_awaited_once_with(courier)
     session.commit.assert_awaited_once()
 
@@ -166,7 +158,7 @@ async def test_move_courier_handler_returns_failure_when_courier_not_found() -> 
     handler = MoveCourierCommandHandler(courier_repo, session)
 
     courier_repo.get.return_value = None
-    command = MoveCourierCommand.create(uuid4(), Location.must_create(2, 2)).get_value()
+    command = MoveCourierCommand.create(uuid4(), 2, 2).get_value()
 
     result = await handler.handle(command)
 
