@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from microarch.delivery.adapters.in_.http.api.create_order_api_base import (
     BaseCreateOrderApi,
@@ -16,7 +15,6 @@ from microarch.delivery.core.application.commands.create_order import (
     CreateOrderCommandHandler,
 )
 from microarch.delivery.core.domain.model.address import Address as DomainAddress
-from microarch.delivery.core.ports.geo_client import IGeoClient
 
 
 class CreateOrderController(BaseCreateOrderApi):
@@ -28,8 +26,6 @@ class CreateOrderController(BaseCreateOrderApi):
     async def create_order(
         self,
         new_order: NewOrder,
-        session: AsyncSession,
-        geo_client: IGeoClient,
     ) -> CreateOrderResponse:
         address_result = DomainAddress.create(
             country=new_order.address.country,

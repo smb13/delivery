@@ -4,6 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from microarch.delivery.adapters.out.postgres.models import Base
 from microarch.delivery.adapters.out.postgres.unit_of_work import UnitOfWork
+from microarch.delivery.core.application.commands.assign_order import (
+    AssignOrderCommandHandler,
+)
+from microarch.delivery.core.domain.services.orders_distribution_service_impl import (
+    OrdersDistributionServiceImpl,
+)
 from microarch.delivery.core.ports.unit_of_work import IUnitOfWork
 
 
@@ -21,6 +27,15 @@ class Container:
     def create_unit_of_work(self) -> IUnitOfWork:
         session = self._session_factory()
         return UnitOfWork(session)
+
+    def create_assign_order_handler(self, uow: IUnitOfWork) -> AssignOrderCommandHandler:
+        """Создает обработчик назначения заказа на основе переданной UoW."""
+        return AssignOrderCommandHandler(
+            order_repository=uow.orders,
+            courier_repository=uow.couriers,
+            distribution_service=OrdersDistributionServiceImpl(),
+            unit_of_work=uow,
+        )
 
 
 async def create_schema(engine: AsyncEngine) -> None:

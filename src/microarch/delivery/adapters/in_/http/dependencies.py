@@ -15,6 +15,7 @@ from microarch.delivery.core.application.commands.create_order import (
 from microarch.delivery.core.application.commands.move_courier import (
     MoveCourierCommandHandler,
 )
+from microarch.delivery.core.ports.geo_client import IGeoClient
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -24,12 +25,19 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
         yield session
 
 
+def get_geo_client(request: Request) -> IGeoClient:
+    """Возвращает gRPC-клиент к сервису Geo из контекста приложения."""
+    return request.app.state.geo_client
+
+
 def get_create_order_handler(
     session: AsyncSession = Depends(get_session),
+    geo_client: IGeoClient = Depends(get_geo_client),
 ) -> CreateOrderCommandHandler:
     """Возвращает готовый обработчик команды создания заказа."""
     return CreateOrderCommandHandler(
         order_repository=OrderRepository(session),
+        geo_client=geo_client,
         session=session,
     )
 
