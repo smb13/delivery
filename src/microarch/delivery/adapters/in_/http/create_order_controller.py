@@ -11,7 +11,6 @@ from microarch.delivery.adapters.in_.http.models.create_order_response import (
     CreateOrderResponse,
 )
 from microarch.delivery.adapters.in_.http.models.new_order import NewOrder
-from microarch.delivery.adapters.out.postgres.order_repository import OrderRepository
 from microarch.delivery.core.application.commands.create_order import (
     CreateOrderCommand,
     CreateOrderCommandHandler,
@@ -21,6 +20,9 @@ from microarch.delivery.core.domain.model.address import Address as DomainAddres
 
 class CreateOrderController(BaseCreateOrderApi):
     """Контроллер создания заказа."""
+
+    def __init__(self, handler: CreateOrderCommandHandler) -> None:
+        self._handler = handler
 
     async def create_order(
         self,
@@ -45,11 +47,7 @@ class CreateOrderController(BaseCreateOrderApi):
         if command_result.is_failure:
             return bad_request(command_result.get_error())
 
-        handler = CreateOrderCommandHandler(
-            order_repository=OrderRepository(session),
-            session=session,
-        )
-        result = await handler.handle(command_result.get_value())
+        result = await self._handler.handle(command_result.get_value())
         if result.is_failure:
             return conflict(result.get_error())
 

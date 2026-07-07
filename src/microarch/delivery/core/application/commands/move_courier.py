@@ -24,16 +24,22 @@ class MoveCourierCommand:
     @staticmethod
     def create(
         courier_id: UUID,
-        location: Location,
+        x: int,
+        y: int,
     ) -> Result[MoveCourierCommand, Error]:
         err = Guard.combine(
             Guard.against_none_or_empty_uuid(courier_id, "courier_id"),
-            Guard.against_none(location, "location"),
+            Guard.against_none(x, "x"),
+            Guard.against_none(y, "y"),
         )
         if err is not None:
             return Result.failure(err)
 
-        return Result.success(MoveCourierCommand(courier_id, location))
+        location_result = Location.create(x, y)
+        if location_result.is_failure:
+            return Result.failure(location_result.get_error())
+
+        return Result.success(MoveCourierCommand(courier_id, location_result.get_value()))
 
 
 class MoveCourierCommandHandler:
