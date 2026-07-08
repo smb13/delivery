@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from libs.ddd.domain_event_publisher import DomainEventPublisher
 from microarch.delivery.adapters.out.postgres.models import Base
 from microarch.delivery.adapters.out.postgres.unit_of_work import UnitOfWork
 from microarch.delivery.core.application.commands.assign_order import (
@@ -28,13 +29,18 @@ class Container:
         session = self._session_factory()
         return UnitOfWork(session)
 
-    def create_assign_order_handler(self, uow: IUnitOfWork) -> AssignOrderCommandHandler:
+    def create_assign_order_handler(
+        self,
+        uow: IUnitOfWork,
+        domain_event_publisher: DomainEventPublisher,
+    ) -> AssignOrderCommandHandler:
         """Создает обработчик назначения заказа на основе переданной UoW."""
         return AssignOrderCommandHandler(
             order_repository=uow.orders,
             courier_repository=uow.couriers,
             distribution_service=OrdersDistributionServiceImpl(),
             unit_of_work=uow,
+            domain_event_publisher=domain_event_publisher,
         )
 
 

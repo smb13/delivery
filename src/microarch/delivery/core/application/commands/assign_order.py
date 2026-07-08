@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from libs.ddd.domain_event_publisher import DomainEventPublisher
 from libs.errs.error import Error
 from libs.errs.general_errors import GeneralErrors
 from libs.errs.result import Result
@@ -32,11 +33,13 @@ class AssignOrderCommandHandler:
         courier_repository: ICourierRepository,
         distribution_service: OrdersDistributionService,
         unit_of_work: IUnitOfWork,
+        domain_event_publisher: DomainEventPublisher,
     ) -> None:
         self._order_repository = order_repository
         self._courier_repository = courier_repository
         self._distribution_service = distribution_service
         self._unit_of_work = unit_of_work
+        self._domain_event_publisher = domain_event_publisher
 
     async def handle(self, command: AssignOrderCommand) -> UnitResult[Error]:
         async with self._unit_of_work as uow:
@@ -56,5 +59,7 @@ class AssignOrderCommandHandler:
 
             await uow.orders.update(order)
             await uow.couriers.update(courier)
+
+        await self._domain_event_publisher.publish([order, courier])
 
         return UnitResult.success()

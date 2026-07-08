@@ -3,6 +3,9 @@ from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.core.ports.integration_event_consumer import (
     IIntegrationEventConsumer,
 )
+from microarch.delivery.core.ports.integration_event_producer import (
+    IIntegrationEventProducer,
+)
 from microarch.delivery.core.ports.order_repository import IOrderRepository
 from microarch.delivery.core.ports.unit_of_work import IUnitOfWork
 
@@ -10,6 +13,7 @@ __all__ = [
     "ICourierRepository",
     "IGeoClient",
     "IIntegrationEventConsumer",
+    "IIntegrationEventProducer",
     "IOrderRepository",
     "IUnitOfWork",
 ]

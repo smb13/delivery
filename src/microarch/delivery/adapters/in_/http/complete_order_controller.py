@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from libs.ddd.domain_event_publisher import DomainEventPublisher
 from microarch.delivery.adapters.in_.http.api.complete_order_api_base import (
     BaseCompleteOrderApi,
 )
@@ -20,6 +21,9 @@ from microarch.delivery.core.application.commands.complete_order import (
 class CompleteOrderController(BaseCompleteOrderApi):
     """Контроллер завершения заказа."""
 
+    def __init__(self, domain_event_publisher: DomainEventPublisher) -> None:
+        self._domain_event_publisher = domain_event_publisher
+
     async def complete_order(
         self,
         courierId: UUID,
@@ -34,6 +38,7 @@ class CompleteOrderController(BaseCompleteOrderApi):
             order_repository=OrderRepository(session),
             courier_repository=CourierRepository(session),
             unit_of_work=UnitOfWork(session),
+            domain_event_publisher=self._domain_event_publisher,
         )
         result = await handler.handle(command_result.get_value())
         if result.is_failure:

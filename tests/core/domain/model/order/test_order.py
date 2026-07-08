@@ -4,6 +4,10 @@ import pytest
 
 from libs.errs.domain_invariant_exception import DomainInvariantException
 from microarch.delivery.core.domain.model.location import Location
+from microarch.delivery.core.domain.model.order.events import (
+    OrderAssignedDomainEvent,
+    OrderCompletedDomainEvent,
+)
 from microarch.delivery.core.domain.model.order.order import Order
 from microarch.delivery.core.domain.model.order.order_status import OrderStatus
 from microarch.delivery.core.domain.model.volume import Volume
@@ -68,6 +72,17 @@ def test_assign_succeeds_when_order_is_created() -> None:
     assert order.status == OrderStatus.ASSIGNED
 
 
+def test_assign_raises_domain_event() -> None:
+    order = Order.must_create(uuid4(), Location.must_create(5, 5), Volume.must_create(3))
+
+    order.assign()
+
+    events = order.get_domain_events()
+    assert len(events) == 1
+    assert isinstance(events[0], OrderAssignedDomainEvent)
+    assert events[0].order_id == order.id
+
+
 def test_assign_fails_when_order_is_already_assigned() -> None:
     order = Order.must_create(uuid4(), Location.must_create(5, 5), Volume.must_create(3))
     order.assign()
@@ -97,6 +112,19 @@ def test_complete_succeeds_when_order_is_assigned() -> None:
 
     assert result.is_success
     assert order.status == OrderStatus.COMPLETED
+
+
+def test_complete_raises_domain_event() -> None:
+    order = Order.must_create(uuid4(), Location.must_create(5, 5), Volume.must_create(3))
+    order.assign()
+    order.clear_domain_events()
+
+    order.complete()
+
+    events = order.get_domain_events()
+    assert len(events) == 1
+    assert isinstance(events[0], OrderCompletedDomainEvent)
+    assert events[0].order_id == order.id
 
 
 def test_complete_fails_when_order_is_created() -> None:

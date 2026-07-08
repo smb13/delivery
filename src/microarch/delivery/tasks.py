@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from taskiq import InMemoryBroker, TaskiqScheduler
 from taskiq.schedule_sources import LabelScheduleSource
 
+from libs.ddd.domain_event_publisher import DomainEventPublisher
+from libs.ddd.null_domain_event_publisher import NullDomainEventPublisher
 from microarch.delivery.config.container import Container
 from microarch.delivery.core.application.commands.assign_order import (
     AssignOrderCommand,
@@ -16,12 +18,17 @@ scheduler = TaskiqScheduler(
 )
 
 _engine: AsyncEngine | None = None
+_domain_event_publisher: DomainEventPublisher = NullDomainEventPublisher()
 
 
-def configure_taskiq(engine: AsyncEngine) -> None:
-    """Устанавливает engine БД для фоновых задач."""
-    global _engine  # noqa: PLW0603
+def configure_taskiq(
+    engine: AsyncEngine,
+    domain_event_publisher: DomainEventPublisher | None = None,
+) -> None:
+    """Устанавливает engine БД и публикатор событий для фоновых задач."""
+    global _engine, _domain_event_publisher  # noqa: PLW0603
     _engine = engine
+    _domain_event_publisher = domain_event_publisher or NullDomainEventPublisher()
 
 
 @broker.task(schedule=[{"interval": 1}])
@@ -40,5 +47,8 @@ async def assign_order_task() -> None:
         return
 
     async with container.create_unit_of_work() as uow:
-        handler = container.create_assign_order_handler(uow)
+        handler = container.create_assign_order_handler(
+            uow,
+            domain_event_publisher=_domain_event_publisher,
+        )
         await handler.handle(command_result.get_value())

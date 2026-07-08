@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from libs.ddd.domain_event import DomainEvent
 
 
 class ApplicationEventPublisher:
-    def __init__(self) -> None:
-        self._handlers: list[Callable[[DomainEvent], None]] = []
+    """Внутренний in-memory брокер доменных событий приложения."""
 
-    def subscribe(self, handler: Callable[[DomainEvent], None]) -> None:
+    def __init__(self) -> None:
+        self._handlers: list[Callable[[DomainEvent], Awaitable[None]]] = []
+
+    def subscribe(self, handler: Callable[[DomainEvent], Awaitable[None]]) -> None:
         self._handlers.append(handler)
 
-    def publish_event(self, event: DomainEvent) -> None:
+    async def publish_event(self, event: DomainEvent) -> None:
         for handler in self._handlers:
-            handler(event)
+            await handler(event)

@@ -13,6 +13,9 @@ from libs.errs.result import Result
 from microarch.delivery.config.container import Container, create_schema, drop_schema
 from microarch.delivery.core.domain.model.location import Location
 from microarch.delivery.core.ports.geo_client import IGeoClient
+from microarch.delivery.core.ports.integration_event_producer import (
+    IIntegrationEventProducer,
+)
 from microarch.delivery.core.ports.unit_of_work import IUnitOfWork
 from microarch.delivery.main import create_app
 
@@ -57,7 +60,13 @@ async def client(engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
     geo_client = AsyncMock(spec=IGeoClient)
     geo_client.get_location.return_value = Result.success(Location.must_create(5, 5))
 
-    app = create_app(engine=engine, geo_client=geo_client)
+    order_events_producer = AsyncMock(spec=IIntegrationEventProducer)
+
+    app = create_app(
+        engine=engine,
+        geo_client=geo_client,
+        order_events_producer=order_events_producer,
+    )
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",

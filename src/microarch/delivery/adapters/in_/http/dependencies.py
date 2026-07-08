@@ -6,6 +6,7 @@ from fastapi import Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from libs.ddd.domain_event_publisher import DomainEventPublisher
 from libs.errs.error import Error
 from microarch.delivery.adapters.out.postgres.courier_repository import CourierRepository
 from microarch.delivery.adapters.out.postgres.order_repository import OrderRepository
@@ -28,6 +29,11 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 def get_geo_client(request: Request) -> IGeoClient:
     """Возвращает gRPC-клиент к сервису Geo из контекста приложения."""
     return request.app.state.geo_client
+
+
+def get_domain_event_publisher(request: Request) -> DomainEventPublisher:
+    """Возвращает публикатор доменных событий из контекста приложения."""
+    return request.app.state.domain_event_publisher
 
 
 def get_create_order_handler(

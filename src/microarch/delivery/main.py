@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 
+from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -19,13 +20,26 @@ from microarch.delivery.adapters.in_.kafka import (
     KafkaConsumer,
 )
 from microarch.delivery.adapters.out.grpc.geo_client_impl import GeoClientImpl
+from microarch.delivery.adapters.out.kafka.order_events_producer import (
+    OrderEventsKafkaProducer,
+)
 from microarch.delivery.application_properties import ApplicationProperties
-from microarch.delivery.config.application_event_publisher import ApplicationEventPublisher
+from microarch.delivery.config.application_event_publisher import (
+    ApplicationEventPublisher,
+)
+from microarch.delivery.core.application.event_handlers import (
+    OrderDomainEventHandler,
+)
 from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.core.ports.integration_event_consumer import (
     IIntegrationEventConsumer,
 )
-from microarch.delivery.default_domain_event_publisher import DefaultDomainEventPublisher
+from microarch.delivery.core.ports.integration_event_producer import (
+    IIntegrationEventProducer,
+)
+from microarch.delivery.default_domain_event_publisher import (
+    DefaultDomainEventPublisher,
+)
 from microarch.delivery.global_exception_handler import (
     DatabaseSettings,
     KafkaConsumerSettings,
@@ -45,6 +59,7 @@ def create_app(
     engine: AsyncEngine | None = None,
     geo_client: IGeoClient | None = None,
     integration_event_consumer: IIntegrationEventConsumer | None = None,
+    order_events_producer: IIntegrationEventProducer | None = None,
 ) -> FastAPI:
     app_properties = properties or ApplicationProperties()
     db_settings = DatabaseSettings()
@@ -70,9 +85,29 @@ def create_app(
         handler=basket_confirmed_handler,
     )
 
+    app_order_events_producer = order_events_producer
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        configure_taskiq(db_engine)
+        nonlocal app_order_events_producer
+
+        order_events_kafka_producer: AIOKafkaProducer | None = None
+        if app_order_events_producer is None:
+            order_events_kafka_producer = AIOKafkaProducer(
+                bootstrap_servers=kafka_settings.host,
+            )
+            await order_events_kafka_producer.start()
+            app_order_events_producer = OrderEventsKafkaProducer(
+                producer=order_events_kafka_producer,
+                topic=app_properties.kafka.order_events_topic,
+            )
+
+        order_domain_event_handler = OrderDomainEventHandler(
+            app_order_events_producer,
+        )
+        event_publisher.subscribe(order_domain_event_handler.handle)
+
+        configure_taskiq(db_engine, domain_event_publisher)
         await scheduler.startup()
         for source in scheduler.sources:
             await source.startup()
@@ -94,6 +129,8 @@ def create_app(
         await scheduler.shutdown()
         for source in scheduler.sources:
             await source.shutdown()
+        if order_events_kafka_producer is not None:
+            await order_events_kafka_producer.stop()
         await db_engine.dispose()
 
     app = FastAPI(
@@ -111,6 +148,7 @@ def create_app(
     app.state.kafka_bootstrap_servers = kafka_settings.host
     app.state.kafka_consumer_group = kafka_settings.consumer_group
     app.state.integration_event_consumer = app_integration_event_consumer
+    app.state.order_events_producer = app_order_events_producer
 
     register_global_exception_handler(app)
 
