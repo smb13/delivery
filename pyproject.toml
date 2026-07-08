@@ -16,8 +16,8 @@ dependencies = [
     "asyncpg>=0.30.0",
     "pydantic-settings>=2.6.0",
     "aiokafka>=0.12.0",
-    "grpcio>=1.68.0",
-    "protobuf>=5.29.0",
+    "grpcio>=1.81.1",
+    "protobuf>=6.33.5",
     "alembic>=1.18.5",
     "taskiq>=0.12.4",
 ]
