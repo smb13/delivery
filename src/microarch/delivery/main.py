@@ -14,10 +14,17 @@ from sqlalchemy.ext.asyncio import (
 )
 from taskiq.cli.scheduler.run import SchedulerLoop
 
+from microarch.delivery.adapters.in_.kafka import (
+    BasketConfirmedIntegrationEventHandler,
+    KafkaConsumer,
+)
 from microarch.delivery.adapters.out.grpc.geo_client_impl import GeoClientImpl
 from microarch.delivery.application_properties import ApplicationProperties
 from microarch.delivery.config.application_event_publisher import ApplicationEventPublisher
 from microarch.delivery.core.ports.geo_client import IGeoClient
+from microarch.delivery.core.ports.integration_event_consumer import (
+    IIntegrationEventConsumer,
+)
 from microarch.delivery.default_domain_event_publisher import DefaultDomainEventPublisher
 from microarch.delivery.global_exception_handler import (
     DatabaseSettings,
@@ -37,6 +44,7 @@ def create_app(
     properties: ApplicationProperties | None = None,
     engine: AsyncEngine | None = None,
     geo_client: IGeoClient | None = None,
+    integration_event_consumer: IIntegrationEventConsumer | None = None,
 ) -> FastAPI:
     app_properties = properties or ApplicationProperties()
     db_settings = DatabaseSettings()
@@ -51,6 +59,17 @@ def create_app(
         port=app_properties.grpc.geo_service.port,
     )
 
+    basket_confirmed_handler = BasketConfirmedIntegrationEventHandler(
+        session_factory=session_factory,
+        geo_client=app_geo_client,
+    )
+    app_integration_event_consumer = integration_event_consumer or KafkaConsumer(
+        bootstrap_servers=kafka_settings.host,
+        group_id=kafka_settings.consumer_group,
+        topic=app_properties.kafka.basket_events_topic,
+        handler=basket_confirmed_handler,
+    )
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         configure_taskiq(db_engine)
@@ -62,9 +81,11 @@ def create_app(
         scheduler_task = asyncio.create_task(
             scheduler_loop.run(loop_interval=timedelta(seconds=1)),
         )
+        await app_integration_event_consumer.start()
 
         yield
 
+        await app_integration_event_consumer.stop()
         scheduler_task.cancel()
         try:
             await scheduler_task
@@ -89,6 +110,7 @@ def create_app(
     app.state.geo_client = app_geo_client
     app.state.kafka_bootstrap_servers = kafka_settings.host
     app.state.kafka_consumer_group = kafka_settings.consumer_group
+    app.state.integration_event_consumer = app_integration_event_consumer
 
     register_global_exception_handler(app)
 
