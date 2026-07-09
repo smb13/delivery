@@ -24,18 +24,10 @@ from microarch.delivery.adapters.out.kafka.order_events_producer import (
     OrderEventsKafkaProducer,
 )
 from microarch.delivery.application_properties import ApplicationProperties
-from microarch.delivery.config.application_event_publisher import (
-    ApplicationEventPublisher,
-)
-from microarch.delivery.core.application.event_handlers import (
-    OrderDomainEventHandler,
-)
+from microarch.delivery.core.ports.domain_event_publisher import IDomainEventPublisher
 from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.core.ports.integration_event_consumer import (
     IIntegrationEventConsumer,
-)
-from microarch.delivery.core.ports.integration_event_producer import (
-    IIntegrationEventProducer,
 )
 from microarch.delivery.default_domain_event_publisher import (
     DefaultDomainEventPublisher,
@@ -59,16 +51,19 @@ def create_app(
     engine: AsyncEngine | None = None,
     geo_client: IGeoClient | None = None,
     integration_event_consumer: IIntegrationEventConsumer | None = None,
-    order_events_producer: IIntegrationEventProducer | None = None,
+    order_events_producer: IDomainEventPublisher | None = None,
 ) -> FastAPI:
     app_properties = properties or ApplicationProperties()
     db_settings = DatabaseSettings()
     kafka_settings = KafkaConsumerSettings()
 
     db_engine = engine or create_database_engine(db_settings)
-    session_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
-    event_publisher = ApplicationEventPublisher()
-    domain_event_publisher = DefaultDomainEventPublisher(event_publisher)
+    session_factory = async_sessionmaker(
+        db_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
     app_geo_client = geo_client or GeoClientImpl(
         host=app_properties.grpc.geo_service.host,
         port=app_properties.grpc.geo_service.port,
@@ -102,10 +97,10 @@ def create_app(
                 topic=app_properties.kafka.order_events_topic,
             )
 
-        order_domain_event_handler = OrderDomainEventHandler(
+        domain_event_publisher = DefaultDomainEventPublisher(
             app_order_events_producer,
         )
-        event_publisher.subscribe(order_domain_event_handler.handle)
+        _app.state.domain_event_publisher = domain_event_publisher
 
         configure_taskiq(db_engine, domain_event_publisher)
         await scheduler.startup()
@@ -142,8 +137,7 @@ def create_app(
     app.state.properties = app_properties
     app.state.db_engine = db_engine
     app.state.session_factory = session_factory
-    app.state.event_publisher = event_publisher
-    app.state.domain_event_publisher = domain_event_publisher
+    app.state.domain_event_publisher = None
     app.state.geo_client = app_geo_client
     app.state.kafka_bootstrap_servers = kafka_settings.host
     app.state.kafka_consumer_group = kafka_settings.consumer_group

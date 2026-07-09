@@ -12,10 +12,8 @@ from testcontainers.postgres import PostgresContainer
 from libs.errs.result import Result
 from microarch.delivery.config.container import Container, create_schema, drop_schema
 from microarch.delivery.core.domain.model.location import Location
+from microarch.delivery.core.ports.domain_event_publisher import IDomainEventPublisher
 from microarch.delivery.core.ports.geo_client import IGeoClient
-from microarch.delivery.core.ports.integration_event_producer import (
-    IIntegrationEventProducer,
-)
 from microarch.delivery.core.ports.unit_of_work import IUnitOfWork
 from microarch.delivery.main import create_app
 
@@ -30,7 +28,8 @@ def postgres_container() -> PostgresContainer:
 def postgres_url(postgres_container: PostgresContainer) -> str:
     connection_url = postgres_container.get_connection_url()
     return connection_url.replace(
-        "postgresql+psycopg2://", "postgresql+asyncpg://",
+        "postgresql+psycopg2://",
+        "postgresql+asyncpg://",
     ).replace("postgresql://", "postgresql+asyncpg://")
 
 
@@ -60,7 +59,7 @@ async def client(engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
     geo_client = AsyncMock(spec=IGeoClient)
     geo_client.get_location.return_value = Result.success(Location.must_create(5, 5))
 
-    order_events_producer = AsyncMock(spec=IIntegrationEventProducer)
+    order_events_producer = AsyncMock(spec=IDomainEventPublisher)
 
     app = create_app(
         engine=engine,
