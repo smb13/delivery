@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from uuid import UUID
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import (
@@ -14,13 +15,20 @@ from sqlalchemy.ext.asyncio import (
 )
 from taskiq.cli.scheduler.run import SchedulerLoop
 
+from libs.errs.error import Error
+from libs.errs.result import Result
 from microarch.delivery.adapters.in_.kafka import (
     BasketConfirmedIntegrationEventHandler,
     KafkaConsumer,
 )
 from microarch.delivery.adapters.out.grpc.geo_client_impl import GeoClientImpl
+from microarch.delivery.adapters.out.postgres.order_repository import OrderRepository
 from microarch.delivery.application_properties import ApplicationProperties
 from microarch.delivery.config.application_event_publisher import ApplicationEventPublisher
+from microarch.delivery.core.application.commands.create_order import (
+    CreateOrderCommand,
+    CreateOrderCommandHandler,
+)
 from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.core.ports.integration_event_consumer import (
     IIntegrationEventConsumer,
@@ -59,9 +67,19 @@ def create_app(
         port=app_properties.grpc.geo_service.port,
     )
 
+    async def _handle_create_order(
+        command: CreateOrderCommand,
+    ) -> Result[UUID, Error]:
+        async with session_factory() as session:
+            handler = CreateOrderCommandHandler(
+                order_repository=OrderRepository(session),
+                geo_client=app_geo_client,
+                session=session,
+            )
+            return await handler.handle(command)
+
     basket_confirmed_handler = BasketConfirmedIntegrationEventHandler(
-        session_factory=session_factory,
-        geo_client=app_geo_client,
+        handle_create_order=_handle_create_order,
     )
     app_integration_event_consumer = integration_event_consumer or KafkaConsumer(
         bootstrap_servers=kafka_settings.host,
