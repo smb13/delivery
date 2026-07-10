@@ -103,8 +103,14 @@ python -m grpc_tools.protoc \
 ```bash
 python -m grpc_tools.protoc \
   -I src/main/proto \
+  --python_out=src/microarch/delivery/adapters/in_/kafka \
+  src/main/proto/basket_events.proto
+```
+
+```bash
+python -m grpc_tools.protoc \
+  -I src/main/proto \
   --python_out=src/generated \
-  src/main/proto/basket_events.proto \
   src/main/proto/order_events.proto
 ```
 
