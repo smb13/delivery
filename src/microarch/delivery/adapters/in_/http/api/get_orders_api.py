@@ -1,4 +1,3 @@
-# coding: utf-8
 
 import importlib
 import pkgutil
@@ -37,7 +36,7 @@ for _, name, _ in pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + "."):
 @router.get(
     "/api/v1/orders/active",
     responses={
-        200: {"model": List[Order], "description": "Успешный ответ"},
+        200: {"model": list[Order], "description": "Успешный ответ"},
         400: {"model": Error, "description": "Некорректные параметры запроса"},
         500: {"model": Error, "description": "Внутренняя ошибка сервиса"},
     },
@@ -47,7 +46,7 @@ for _, name, _ in pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + "."):
 )
 async def get_orders(
     session: AsyncSession = Depends(get_session),
-) -> List[Order]:
+) -> list[Order]:
     """Позволяет получить все незавершенные заказы"""
     if not BaseGetOrdersApi.subclasses:
         raise HTTPException(status_code=500, detail="Not implemented")

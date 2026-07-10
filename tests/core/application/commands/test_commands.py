@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from libs.ddd.null_domain_event_publisher import NullDomainEventPublisher
 from libs.errs.error import Error
 from libs.errs.result import Result
 from microarch.delivery.core.application.commands.assign_order import (
@@ -193,6 +194,7 @@ async def test_assign_order_handler_assigns_and_persists_changes() -> None:
         courier_repo,
         distribution_service,
         uow,
+        NullDomainEventPublisher(),
     )
 
     result = await handler.handle(AssignOrderCommand())
@@ -219,6 +221,7 @@ async def test_assign_order_handler_returns_failure_when_no_created_order() -> N
         courier_repo,
         distribution_service,
         uow,
+        NullDomainEventPublisher(),
     )
 
     result = await handler.handle(AssignOrderCommand())
@@ -252,6 +255,7 @@ async def test_assign_order_handler_returns_distribution_error() -> None:
         courier_repo,
         distribution_service,
         uow,
+        NullDomainEventPublisher(),
     )
 
     result = await handler.handle(AssignOrderCommand())
@@ -279,7 +283,12 @@ async def test_complete_order_handler_completes_assignment_and_order() -> None:
     order_repo.get.return_value = order
     courier_repo.get.return_value = courier
 
-    handler = CompleteOrderCommandHandler(order_repo, courier_repo, uow)
+    handler = CompleteOrderCommandHandler(
+        order_repo,
+        courier_repo,
+        uow,
+        NullDomainEventPublisher(),
+    )
     command = CompleteOrderCommand.create(courier.id, order.id).get_value()
 
     result = await handler.handle(command)
@@ -301,7 +310,12 @@ async def test_complete_order_handler_returns_failure_when_courier_not_found() -
 
     courier_repo.get.return_value = None
 
-    handler = CompleteOrderCommandHandler(order_repo, courier_repo, uow)
+    handler = CompleteOrderCommandHandler(
+        order_repo,
+        courier_repo,
+        uow,
+        NullDomainEventPublisher(),
+    )
     command = CompleteOrderCommand.create(uuid4(), uuid4()).get_value()
 
     result = await handler.handle(command)
@@ -328,7 +342,12 @@ async def test_complete_order_handler_returns_failure_when_order_not_assigned() 
     order_repo.get.return_value = order
     courier_repo.get.return_value = courier
 
-    handler = CompleteOrderCommandHandler(order_repo, courier_repo, uow)
+    handler = CompleteOrderCommandHandler(
+        order_repo,
+        courier_repo,
+        uow,
+        NullDomainEventPublisher(),
+    )
     command = CompleteOrderCommand.create(courier.id, order.id).get_value()
 
     result = await handler.handle(command)

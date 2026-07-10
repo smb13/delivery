@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
+from libs.ddd.domain_event_publisher import DomainEventPublisher
 from libs.errs.error import Error
 from libs.errs.general_errors import GeneralErrors
 from libs.errs.guard import Guard
@@ -43,10 +44,12 @@ class CompleteOrderCommandHandler:
         order_repository: IOrderRepository,
         courier_repository: ICourierRepository,
         unit_of_work: IUnitOfWork,
+        domain_event_publisher: DomainEventPublisher,
     ) -> None:
         self._order_repository = order_repository
         self._courier_repository = courier_repository
         self._unit_of_work = unit_of_work
+        self._domain_event_publisher = domain_event_publisher
 
     async def handle(self, command: CompleteOrderCommand) -> UnitResult[Error]:
         courier = await self._courier_repository.get(command.courier_id)
@@ -72,5 +75,7 @@ class CompleteOrderCommandHandler:
         async with self._unit_of_work as uow:
             await uow.couriers.update(courier)
             await uow.orders.update(order)
+
+        await self._domain_event_publisher.publish([order, courier])
 
         return UnitResult.success()

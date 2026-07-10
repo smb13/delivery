@@ -8,6 +8,10 @@ from libs.errs.guard import Guard
 from libs.errs.result import Result
 from libs.errs.unit_result import UnitResult
 from microarch.delivery.core.domain.model.location import Location
+from microarch.delivery.core.domain.model.order.events import (
+    OrderAssignedDomainEvent,
+    OrderCompletedDomainEvent,
+)
 from microarch.delivery.core.domain.model.order.order_status import OrderStatus
 from microarch.delivery.core.domain.model.volume import Volume
 
@@ -68,6 +72,7 @@ class Order(Aggregate[UUID]):
             return UnitResult.failure(OrderErrors.order_is_not_created())
 
         self._status = OrderStatus.ASSIGNED
+        self.raise_domain_event(OrderAssignedDomainEvent(self.id))
         return UnitResult.success()
 
     def complete(self) -> UnitResult[Error]:
@@ -75,6 +80,7 @@ class Order(Aggregate[UUID]):
             return UnitResult.failure(OrderErrors.order_is_not_assigned())
 
         self._status = OrderStatus.COMPLETED
+        self.raise_domain_event(OrderCompletedDomainEvent(self.id))
         return UnitResult.success()
 
 
