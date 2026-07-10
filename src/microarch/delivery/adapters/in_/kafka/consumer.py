@@ -39,6 +39,7 @@ class KafkaConsumer(IIntegrationEventConsumer):
             bootstrap_servers=self._bootstrap_servers,
             group_id=self._group_id,
             auto_offset_reset="earliest",
+            enable_auto_commit=False,
         )
         try:
             await self._consumer.start()
@@ -76,7 +77,9 @@ class KafkaConsumer(IIntegrationEventConsumer):
         try:
             async for message in self._consumer:
                 try:
-                    await self._handler.handle(message.value)
+                    success = await self._handler.handle(message.value)
+                    if success:
+                        await self._consumer.commit()
                 except Exception:
                     logger.exception(
                         "Failed to handle Kafka message from topic %s",

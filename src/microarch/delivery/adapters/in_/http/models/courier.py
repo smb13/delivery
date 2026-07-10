@@ -1,4 +1,3 @@
-# coding: utf-8
 
 """
     Swagger Delivery
@@ -13,21 +12,21 @@
 
 
 from __future__ import annotations
+
+import json
 import pprint
 import re  # noqa: F401
-import json
-
-
-
-
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar
 from uuid import UUID
+
+from pydantic import BaseModel, Field, StrictStr
+
 from microarch.delivery.adapters.in_.http.models.location import Location
+
 try:
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing import Self
 
 class Courier(BaseModel):
     """
@@ -36,7 +35,7 @@ class Courier(BaseModel):
     id: UUID = Field(description="Идентификатор")
     name: StrictStr = Field(description="Имя")
     location: Location = Field(description="Геолокация")
-    __properties: ClassVar[List[str]] = ["id", "name", "location"]
+    __properties: ClassVar[list[str]] = ["id", "name", "location"]
 
     model_config = {
         "populate_by_name": True,
@@ -59,7 +58,7 @@ class Courier(BaseModel):
         """Create an instance of Courier from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return the dictionary representation of the model using alias.
 
         This has the following differences from calling pydantic's
@@ -81,7 +80,7 @@ class Courier(BaseModel):
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: Dict) -> Self:
+    def from_dict(cls, obj: dict) -> Self:
         """Create an instance of Courier from a dict"""
         if obj is None:
             return None

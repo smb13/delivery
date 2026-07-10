@@ -1,8 +1,7 @@
-# coding: utf-8
 
 import importlib
 import pkgutil
-from typing import Any, Dict, List  # noqa: F401
+from typing import Annotated, Any, Dict, List  # noqa: F401
 from uuid import UUID
 
 from fastapi import (  # noqa: F401
@@ -21,7 +20,6 @@ from fastapi import (  # noqa: F401
 )
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing_extensions import Annotated
 
 import microarch.delivery.adapters.in_.http
 from libs.ddd.domain_event_publisher import DomainEventPublisher

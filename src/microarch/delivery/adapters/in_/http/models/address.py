@@ -1,4 +1,3 @@
-# coding: utf-8
 
 """
     Swagger Delivery
@@ -13,19 +12,18 @@
 
 
 from __future__ import annotations
+
+import json
 import pprint
 import re  # noqa: F401
-import json
+from typing import Any, ClassVar
 
+from pydantic import BaseModel, Field, StrictStr
 
-
-
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
 try:
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing import Self
 
 class Address(BaseModel):
     """
@@ -36,7 +34,7 @@ class Address(BaseModel):
     street: StrictStr = Field(description="Улица")
     house: StrictStr = Field(description="Дом")
     apartment: StrictStr = Field(description="Квартира")
-    __properties: ClassVar[List[str]] = ["country", "city", "street", "house", "apartment"]
+    __properties: ClassVar[list[str]] = ["country", "city", "street", "house", "apartment"]
 
     model_config = {
         "populate_by_name": True,
@@ -59,7 +57,7 @@ class Address(BaseModel):
         """Create an instance of Address from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return the dictionary representation of the model using alias.
 
         This has the following differences from calling pydantic's
@@ -78,7 +76,7 @@ class Address(BaseModel):
         return _dict
 
     @classmethod
-    def from_dict(cls, obj: Dict) -> Self:
+    def from_dict(cls, obj: dict) -> Self:
         """Create an instance of Address from a dict"""
         if obj is None:
             return None

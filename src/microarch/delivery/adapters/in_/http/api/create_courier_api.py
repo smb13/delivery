@@ -1,8 +1,7 @@
-# coding: utf-8
 
 import importlib
 import pkgutil
-from typing import Dict, List  # noqa: F401
+from typing import Annotated, Dict, List  # noqa: F401
 
 from fastapi import (  # noqa: F401
     APIRouter,
@@ -20,7 +19,6 @@ from fastapi import (  # noqa: F401
 )
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing_extensions import Annotated
 
 import microarch.delivery.adapters.in_.http
 from microarch.delivery.adapters.in_.http.api.create_courier_api_base import BaseCreateCourierApi

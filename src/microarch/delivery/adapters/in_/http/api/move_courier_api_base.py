@@ -1,18 +1,15 @@
-# coding: utf-8
 
-from typing import Any, ClassVar, Dict, List, Tuple  # noqa: F401
+from typing import Annotated, Any, ClassVar, Dict, List, Tuple  # noqa: F401
 from uuid import UUID
 
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing_extensions import Annotated
 
-from microarch.delivery.adapters.in_.http.models.error import Error
 from microarch.delivery.adapters.in_.http.models.location import Location
 
 
 class BaseMoveCourierApi:
-    subclasses: ClassVar[Tuple] = ()
+    subclasses: ClassVar[tuple] = ()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

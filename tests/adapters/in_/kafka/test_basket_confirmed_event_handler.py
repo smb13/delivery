@@ -4,18 +4,16 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from libs.errs.error import Error
 from libs.errs.result import Result
 from microarch.delivery.adapters.in_.kafka import (
     BasketConfirmedIntegrationEventHandler,
     basket_events_pb2,
 )
-from microarch.delivery.adapters.out.postgres.models import OrderModel
-from microarch.delivery.config.container import create_schema, drop_schema
-from microarch.delivery.core.domain.model.location import Location
-from microarch.delivery.core.ports.geo_client import IGeoClient
+from microarch.delivery.core.application.commands.create_order import (
+    CreateOrderCommand,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -43,86 +41,90 @@ def _build_event_bytes(
     return event.SerializeToString()
 
 
-async def test_handler_creates_order_from_basket_event(engine: AsyncEngine) -> None:
-    await drop_schema(engine)
-    await create_schema(engine)
-
-    session_factory = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-    geo_client = AsyncMock(spec=IGeoClient)
-    geo_client.get_location.return_value = Result.success(Location.must_create(5, 5))
+async def test_handler_calls_use_case_and_returns_true_on_success() -> None:
+    handle_create_order = AsyncMock()
+    handle_create_order.return_value = Result.success(uuid4())
 
     handler = BasketConfirmedIntegrationEventHandler(
-        session_factory=session_factory,
-        geo_client=geo_client,
+        handle_create_order=handle_create_order,
     )
 
     order_id = uuid4()
     raw_event = _build_event_bytes(basket_id=str(order_id))
 
-    await handler.handle(raw_event)
+    success = await handler.handle(raw_event)
 
-    async with session_factory() as session:
-        result = await session.execute(select(OrderModel).where(OrderModel.id == order_id))
-        order_model = result.scalar_one_or_none()
+    assert success is True
+    handle_create_order.assert_awaited_once()
+    command = handle_create_order.await_args[0][0]
+    assert isinstance(command, CreateOrderCommand)
+    assert command.order_id == order_id
+    assert command.address.country == "RU"
+    assert command.volume == 3
 
-    assert order_model is not None
-    assert order_model.location_x == 5
-    assert order_model.location_y == 5
-    assert order_model.volume == 3
 
-
-async def test_handler_skips_invalid_event(engine: AsyncEngine) -> None:
-    await drop_schema(engine)
-    await create_schema(engine)
-
-    session_factory = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
+async def test_handler_returns_false_when_use_case_fails() -> None:
+    handle_create_order = AsyncMock()
+    handle_create_order.return_value = Result.failure(
+        Error.of("order.already.exists", "Order already exists"),
     )
-    geo_client = AsyncMock(spec=IGeoClient)
 
     handler = BasketConfirmedIntegrationEventHandler(
-        session_factory=session_factory,
-        geo_client=geo_client,
+        handle_create_order=handle_create_order,
     )
 
-    await handler.handle(b"not a valid protobuf message")
+    order_id = uuid4()
+    raw_event = _build_event_bytes(basket_id=str(order_id))
 
-    async with session_factory() as session:
-        result = await session.execute(select(OrderModel))
-        orders = result.scalars().all()
+    success = await handler.handle(raw_event)
 
-    assert len(orders) == 0
-    geo_client.get_location.assert_not_awaited()
+    assert success is False
+    handle_create_order.assert_awaited_once()
 
 
-async def test_handler_skips_event_with_invalid_uuid(engine: AsyncEngine) -> None:
-    await drop_schema(engine)
-    await create_schema(engine)
-
-    session_factory = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-    geo_client = AsyncMock(spec=IGeoClient)
+async def test_handler_skips_invalid_event() -> None:
+    handle_create_order = AsyncMock()
 
     handler = BasketConfirmedIntegrationEventHandler(
-        session_factory=session_factory,
-        geo_client=geo_client,
+        handle_create_order=handle_create_order,
+    )
+
+    success = await handler.handle(b"not a valid protobuf message")
+
+    assert success is False
+    handle_create_order.assert_not_awaited()
+
+
+async def test_handler_skips_event_with_invalid_uuid() -> None:
+    handle_create_order = AsyncMock()
+
+    handler = BasketConfirmedIntegrationEventHandler(
+        handle_create_order=handle_create_order,
     )
 
     raw_event = _build_event_bytes(basket_id="not-a-uuid")
-    await handler.handle(raw_event)
+    success = await handler.handle(raw_event)
 
-    async with session_factory() as session:
-        result = await session.execute(select(OrderModel))
-        orders = result.scalars().all()
+    assert success is False
+    handle_create_order.assert_not_awaited()
 
-    assert len(orders) == 0
-    geo_client.get_location.assert_not_awaited()
+
+async def test_handler_skips_event_with_invalid_address() -> None:
+    handle_create_order = AsyncMock()
+
+    handler = BasketConfirmedIntegrationEventHandler(
+        handle_create_order=handle_create_order,
+    )
+
+    raw_event = _build_event_bytes(
+        basket_id=str(uuid4()),
+        country="",
+        city="",
+        street="",
+        house="",
+        apartment="",
+    )
+    success = await handler.handle(raw_event)
+
+    assert success is False
+    handle_create_order.assert_not_awaited()

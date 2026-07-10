@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from google.protobuf.message import DecodeError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from libs.errs.error import Error
+from libs.errs.result import Result
 from microarch.delivery.adapters.in_.kafka import basket_events_pb2
-from microarch.delivery.adapters.out.postgres.order_repository import OrderRepository
 from microarch.delivery.core.application.commands.create_order import (
     CreateOrderCommand,
-    CreateOrderCommandHandler,
 )
 from microarch.delivery.core.domain.model.address import Address
-from microarch.delivery.core.ports.geo_client import IGeoClient
 
 logger = logging.getLogger(__name__)
 
@@ -22,31 +21,36 @@ class BasketConfirmedIntegrationEventHandler:
     """Обработчик интеграционного события подтверждения корзины.
 
     Преобразует BasketConfirmedIntegrationEvent в команду создания заказа
-    и выполняет ее в рамках отдельной сессии БД.
+    и вызывает переданный сценарий создания заказа.
     """
 
     def __init__(
         self,
-        session_factory: async_sessionmaker[AsyncSession],
-        geo_client: IGeoClient,
+        handle_create_order: Callable[
+            [CreateOrderCommand],
+            Awaitable[Result[UUID, Error]],
+        ],
     ) -> None:
-        self._session_factory = session_factory
-        self._geo_client = geo_client
+        self._handle_create_order = handle_create_order
 
-    async def handle(self, raw_event: bytes) -> None:
-        """Десериализует событие и создает заказ."""
+    async def handle(self, raw_event: bytes) -> bool:
+        """Десериализует событие и создает заказ.
+
+        Returns:
+            True, если заказ успешно создан, иначе False.
+        """
         event = basket_events_pb2.BasketConfirmedIntegrationEvent()
         try:
             event.ParseFromString(raw_event)
         except DecodeError:
             logger.exception("Failed to decode BasketConfirmedIntegrationEvent")
-            return
+            return False
 
         try:
             order_id = UUID(event.basket_id)
         except ValueError:
             logger.exception("Invalid basket_id UUID: %s", event.basket_id)
-            return
+            return False
 
         address_result = Address.create(
             country=event.address.country,
@@ -60,7 +64,7 @@ class BasketConfirmedIntegrationEventHandler:
                 "Invalid address in basket confirmed event: %s",
                 address_result.get_error(),
             )
-            return
+            return False
 
         command_result = CreateOrderCommand.create(
             order_id=order_id,
@@ -72,17 +76,14 @@ class BasketConfirmedIntegrationEventHandler:
                 "Invalid create order command: %s",
                 command_result.get_error(),
             )
-            return
+            return False
 
-        async with self._session_factory() as session:
-            handler = CreateOrderCommandHandler(
-                order_repository=OrderRepository(session),
-                geo_client=self._geo_client,
-                session=session,
+        result = await self._handle_create_order(command_result.get_value())
+        if result.is_failure:
+            logger.error(
+                "Failed to create order from basket event: %s",
+                result.get_error(),
             )
-            result = await handler.handle(command_result.get_value())
-            if result.is_failure:
-                logger.error(
-                    "Failed to create order from basket event: %s",
-                    result.get_error(),
-                )
+            return False
+
+        return True
