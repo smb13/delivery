@@ -10,6 +10,9 @@ from libs.ddd.domain_event_publisher import DomainEventPublisher
 from libs.errs.error import Error
 from microarch.delivery.adapters.out.postgres.courier_repository import CourierRepository
 from microarch.delivery.adapters.out.postgres.order_repository import OrderRepository
+from microarch.delivery.adapters.out.postgres.outbox.publisher import (
+    create_outbox_domain_event_publisher,
+)
 from microarch.delivery.core.application.commands.create_order import (
     CreateOrderCommandHandler,
 )
@@ -31,9 +34,15 @@ def get_geo_client(request: Request) -> IGeoClient:
     return request.app.state.geo_client
 
 
-def get_domain_event_publisher(request: Request) -> DomainEventPublisher:
-    """Возвращает публикатор доменных событий из контекста приложения."""
-    return request.app.state.domain_event_publisher
+def get_domain_event_publisher(
+    session: AsyncSession = Depends(get_session),
+) -> DomainEventPublisher:
+    """Возвращает публикатор доменных событий, сохраняющий их в outbox.
+
+    Создаётся на основе запросной сессии БД, поэтому запись событий
+    происходит в рамках той же транзакции, что и изменения агрегатов.
+    """
+    return create_outbox_domain_event_publisher(session)
 
 
 def get_create_order_handler(

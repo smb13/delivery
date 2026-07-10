@@ -59,7 +59,6 @@ class AssignOrderCommandHandler:
 
             await uow.orders.update(order)
             await uow.couriers.update(courier)
-
-        await self._domain_event_publisher.publish([order, courier])
+            await self._domain_event_publisher.publish([order, courier])
 
         return UnitResult.success()

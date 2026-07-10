@@ -6,10 +6,15 @@ from uuid import UUID, uuid4
 
 
 class DomainEvent(ABC):
-    def __init__(self, source: object = "default") -> None:
+    def __init__(
+        self,
+        source: object = "default",
+        event_id: UUID | None = None,
+        occurred_on_utc: datetime | None = None,
+    ) -> None:
         self._source = source
-        self.event_id: UUID = uuid4()
-        self.occurred_on_utc: datetime = datetime.now(UTC)
+        self.event_id: UUID = event_id or uuid4()
+        self.occurred_on_utc: datetime = occurred_on_utc or datetime.now(UTC)
 
     @property
     def source(self) -> object:

@@ -10,6 +10,10 @@ class Base(DeclarativeBase):
     pass
 
 
+# Импорт OutboxMessage гарантирует регистрацию модели в Base.metadata.
+from microarch.delivery.adapters.out.postgres.outbox.models import OutboxMessage  # noqa: E402, F401
+
+
 class OrderModel(Base):
     """ORM-модель агрегата Order."""
 
