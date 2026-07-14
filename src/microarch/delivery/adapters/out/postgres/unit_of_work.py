@@ -25,6 +25,11 @@ class UnitOfWork(IUnitOfWork):
         self._couriers = CourierRepository(session)
 
     @property
+    def session(self) -> AsyncSession:
+        """Асинхронная сессия SQLAlchemy."""
+        return self._session
+
+    @property
     def orders(self) -> IOrderRepository:
         return self._orders
 

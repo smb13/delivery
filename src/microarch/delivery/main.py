@@ -37,9 +37,6 @@ from microarch.delivery.core.ports.geo_client import IGeoClient
 from microarch.delivery.core.ports.integration_event_consumer import (
     IIntegrationEventConsumer,
 )
-from microarch.delivery.default_domain_event_publisher import (
-    DefaultDomainEventPublisher,
-)
 from microarch.delivery.global_exception_handler import (
     DatabaseSettings,
     KafkaConsumerSettings,
@@ -115,12 +112,7 @@ def create_app(
                 topic=app_properties.kafka.order_events_topic,
             )
 
-        domain_event_publisher = DefaultDomainEventPublisher(
-            app_order_events_producer,
-        )
-        _app.state.domain_event_publisher = domain_event_publisher
-
-        configure_taskiq(db_engine, domain_event_publisher)
+        configure_taskiq(db_engine, app_order_events_producer)
         await scheduler.startup()
         for source in scheduler.sources:
             await source.startup()
@@ -155,7 +147,6 @@ def create_app(
     app.state.properties = app_properties
     app.state.db_engine = db_engine
     app.state.session_factory = session_factory
-    app.state.domain_event_publisher = None
     app.state.geo_client = app_geo_client
     app.state.kafka_bootstrap_servers = kafka_settings.host
     app.state.kafka_consumer_group = kafka_settings.consumer_group

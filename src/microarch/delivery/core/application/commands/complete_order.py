@@ -75,7 +75,6 @@ class CompleteOrderCommandHandler:
         async with self._unit_of_work as uow:
             await uow.couriers.update(courier)
             await uow.orders.update(order)
-
-        await self._domain_event_publisher.publish([order, courier])
+            await self._domain_event_publisher.publish([order, courier])
 
         return UnitResult.success()

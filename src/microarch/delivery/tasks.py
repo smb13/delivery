@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from taskiq import InMemoryBroker, TaskiqScheduler
 from taskiq.schedule_sources import LabelScheduleSource
 
-from libs.ddd.domain_event_publisher import DomainEventPublisher
-from libs.ddd.null_domain_event_publisher import NullDomainEventPublisher
+from microarch.delivery.adapters.out.postgres.outbox.job import OutboxJob
+from microarch.delivery.adapters.out.postgres.outbox.publisher import (
+    create_outbox_domain_event_publisher,
+)
+from microarch.delivery.adapters.out.postgres.outbox.repository import OutboxRepository
 from microarch.delivery.config.container import Container
 from microarch.delivery.core.application.commands.assign_order import (
     AssignOrderCommand,
 )
+from microarch.delivery.core.ports.domain_event_publisher import IDomainEventPublisher
 
 broker = InMemoryBroker()
 scheduler = TaskiqScheduler(
@@ -18,17 +22,27 @@ scheduler = TaskiqScheduler(
 )
 
 _engine: AsyncEngine | None = None
-_domain_event_publisher: DomainEventPublisher = NullDomainEventPublisher()
+_order_events_producer: IDomainEventPublisher | None = None
 
 
 def configure_taskiq(
     engine: AsyncEngine,
-    domain_event_publisher: DomainEventPublisher | None = None,
+    order_events_producer: IDomainEventPublisher | None = None,
 ) -> None:
-    """Устанавливает engine БД и публикатор событий для фоновых задач."""
-    global _engine, _domain_event_publisher  # noqa: PLW0603
+    """Устанавливает engine БД и продюсер событий для фоновых задач."""
+    global _engine, _order_events_producer  # noqa: PLW0603
     _engine = engine
-    _domain_event_publisher = domain_event_publisher or NullDomainEventPublisher()
+    _order_events_producer = order_events_producer
+
+
+def _create_session_maker() -> async_sessionmaker[AsyncSession]:
+    if _engine is None:
+        raise RuntimeError("Taskiq is not configured with a database engine")
+    return async_sessionmaker(
+        _engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
 
 @broker.task(schedule=[{"interval": 1}])
@@ -49,6 +63,20 @@ async def assign_order_task() -> None:
     async with container.create_unit_of_work() as uow:
         handler = container.create_assign_order_handler(
             uow,
-            domain_event_publisher=_domain_event_publisher,
+            domain_event_publisher=create_outbox_domain_event_publisher(uow.session),
         )
         await handler.handle(command_result.get_value())
+
+
+@broker.task(schedule=[{"interval": 1}])
+async def publish_outbox_messages() -> None:
+    """Периодически публикует неотправленные outbox-сообщения в Kafka.
+
+    Запускается каждую секунду через Taskiq scheduler.
+    """
+    if _engine is None or _order_events_producer is None:
+        return
+
+    session_maker = _create_session_maker()
+    job = OutboxJob(session_maker, _order_events_producer, OutboxRepository)
+    await job.run()
